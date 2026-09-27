@@ -219,16 +219,6 @@ img{display:block;max-width:100%}
 .thumb .thumb-tools button:disabled{opacity:.3}
 .thumb .thumb-tools svg{width:15px;height:15px}
 
-/* Demo photos */
-.demo-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
-.demo-item{position:relative;border-radius:13px;overflow:hidden;border:1px solid var(--border);background:var(--surface-2);cursor:pointer;padding:0;box-shadow:var(--shadow);transition:transform .15s cubic-bezier(.34,1.56,.64,1),box-shadow .2s}
-.demo-item:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
-.demo-item:active{transform:scale(.96)}
-.demo-item img{width:100%;aspect-ratio:1;object-fit:cover}
-.demo-item .demo-lbl{position:absolute;bottom:0;left:0;right:0;padding:16px 8px 6px;background:linear-gradient(transparent,rgba(15,12,9,.82));color:#fff;font-size:11.5px;font-weight:700;text-align:left}
-.demo-item .demo-add{position:absolute;top:7px;right:7px;width:26px;height:26px;border-radius:8px;background:rgba(20,16,12,.72);color:#fff;display:grid;place-items:center;backdrop-filter:blur(4px)}
-.demo-item .demo-add svg{width:14px;height:14px}
-
 /* Progress / skeleton */
 .progress-card{text-align:center;padding:34px 22px}
 .progress-card .spin-ring{width:74px;height:74px;margin:0 auto 18px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--primary);animation:spin 1s linear infinite}
@@ -533,11 +523,6 @@ img{display:block;max-width:100%}
             <div style="font-weight:700;font-size:14.5px">Drag & drop images here</div>
             <div style="font-size:12.5px;margin-top:3px">JPEG or PNG · multiple files welcome</div>
           </div>
-          <div id="demoWrap" style="margin-top:16px">
-            <div style="font-weight:700;font-size:13.5px;margin-bottom:2px">Try a demo photo</div>
-            <p class="hint" style="margin:0 0 10px">No lot on hand? Tap a sample below — it loads into the assessment exactly like a photo chosen from your device.</p>
-            <div class="demo-strip" id="demoStrip"></div>
-          </div>
           <div id="thumbArea"></div>
         </div>
 
@@ -584,28 +569,6 @@ img{display:block;max-width:100%}
 /* ---- Single model constant (edit here or in Settings) ---- */
 const GEMINI_MODEL_DEFAULT = "gemini-3.6-flash";
 const GEMINI_ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-
-/* ---- Built-in shared key (prototype / evaluation use) ------------------
-   Visitors do NOT need their own key: when no personal key has been saved
-   in Settings, the app automatically falls back to this shared key.
-   IMPORTANT: this app is pure client-side code. Anyone who opens View
-   Source / DevTools on the hosted page CAN read this value — that is
-   inherent to any key shipped in a static site. Use a dedicated, low-quota
-   key created only for this demo, and rotate or delete it after the
-   evaluation period. Never put a personal or production key here. */
-const SHARED_DEMO_API_KEY = "AQ.Ab8RN6KJuw2TOzp8xioGuNPDv26rCHiAZEDQfRSp2f3YwsYGQQ";
-
-/* ---- Demo photos ---------------------------------------------------------
-   Shown on the New Assessment screen (and on the empty Home screen).
-   Tapping one fetches the file and runs it through the exact same resize
-   and analysis pipeline as a photo chosen from the device.
-   src: a path relative to this HTML file (e.g. a "demo-images" folder in
-   the same GitHub repo) or a full https:// URL. */
-const DEMO_IMAGES = [
-  { src: "demo-images/onion-lot-1.jpg", label: "Demo lot 1" },
-  { src: "demo-images/onion-lot-2.jpg", label: "Demo lot 2" },
-  { src: "demo-images/onion-lot-3.jpg", label: "Demo lot 3" },
-];
 
 const LS_HISTORY  = "og_history";
 const LS_SETTINGS = "og_settings";
@@ -746,17 +709,14 @@ function renderHome(){
       <div class="arcs" aria-hidden="true"><span></span><span></span><span></span><span></span><div class="arcs-core"></div></div>
       <div class="hero-icons"><i data-lucide="camera"></i><i data-lucide="scan-line"></i><i data-lucide="sparkles"></i><i data-lucide="leaf"></i></div>
       <h2>Grade onions with objective AI</h2>
-      <p>Capture a photograph of a lot, let the AI count defects, and get a transparent, consistent quality report in seconds, ready to download and share — no more grader disputes.</p>
-      <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-primary" data-nav="new"><i data-lucide="plus"></i>Start your first assessment</button>
-        <button class="btn btn-ghost" id="btnDemoStart"><i data-lucide="images"></i>Try with a demo photo</button>
-      </div>
+      <p>Photograph a lot, let Gemini count defects, and get a transparent, consistent quality report in seconds — no more grader disputes.</p>
+      <div style="margin-top:20px"><button class="btn btn-primary" data-nav="new"><i data-lucide="plus"></i>Start your first assessment</button></div>
     </div>` : "";
 
   $("#view-home").innerHTML = `
     <div class="page-head">
       <h1>Welcome${greetName()}</h1>
-      <p>${n === 0 ? "Grade your first onion lot — no setup needed, or start with a demo photo." : "Here is what is happening across your procurement lots."}</p>
+      <p>${n === 0 ? "Set up your API key and grade your first onion lot." : "Here is what is happening across your procurement lots."}</p>
     </div>
     ${empty}
     ${n > 0 ? `
@@ -775,8 +735,6 @@ function renderHome(){
   }
   $$("#view-home [data-open]").forEach(el => el.addEventListener("click", () => openAssessment(el.dataset.open)));
   $$("#view-home [data-nav]").forEach(el => el.addEventListener("click", () => route(el.dataset.nav)));
-  const demoBtn = $("#btnDemoStart");
-  if (demoBtn) demoBtn.addEventListener("click", () => { route("new"); addDemoImage(0); });
   icons();
 }
 function greetName(){
@@ -860,70 +818,15 @@ function downscaleImage(file){
     reader.readAsDataURL(file);
   });
 }
-const IMG_EXT_RE = /\.(jpe?g|png|webp|heic|heif|gif|bmp|avif|tiff?)$/i;
-function looksLikeImage(f){
-  /* Mobile pickers (Android gallery / photo picker) sometimes hand files back
-     with an EMPTY MIME type. Accept anything that is typed as an image, has an
-     image-looking filename, or reports no type at all — if a file still isn't
-     decodable, downscaleImage() rejects it and the user gets a clear toast. */
-  return (f.type || "").startsWith("image/") || !f.type || IMG_EXT_RE.test(f.name || "");
-}
 async function addFiles(fileList){
-  const all = Array.from(fileList || []);
-  if (!all.length) return;
-  const files = all.filter(looksLikeImage);
-  if (!files.length){
-    toast("Those files were not recognised as images — pick them from Gallery / Photos, or convert to JPG.", "warn");
-    return;
-  }
+  const files = Array.from(fileList).filter(f => f.type.startsWith("image/"));
+  if (!files.length){ toast("Please choose image files.", "warn"); return; }
   if (state.newImages.length + files.length > 12){ toast("Up to 12 images per assessment.", "warn"); }
-  let added = 0;
   for (const f of files.slice(0, 12 - state.newImages.length)){
-    try { state.newImages.push(await downscaleImage(f)); added++; }
-    catch(e){ toast(e.message + (f.type ? "" : " (this file format may not be supported by your browser)"), "warn"); }
+    try { state.newImages.push(await downscaleImage(f)); }
+    catch(e){ toast(e.message, "warn"); }
   }
   renderThumbArea();
-  if (added) toast(`${added} photo${added===1?"":"s"} added — ${state.newImages.length}/12 ready.`);
-}
-
-/* ---- demo photos (fetched from this repository, run through the same pipeline) ---- */
-async function addDemoImage(i){
-  const d = DEMO_IMAGES[i];
-  if (!d) return;
-  if (state.newImages.length >= 12){ toast("Up to 12 images per assessment.", "warn"); return; }
-  toast("Loading demo photo…");
-  try {
-    const res = await fetch(d.src);
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const blob = await res.blob();
-    if (!blob.type.startsWith("image/")) throw new Error("Not an image");
-    const name = String(d.label || "demo").toLowerCase().replace(/[^a-z0-9._-]+/g, "-") + ".jpg";
-    state.newImages.push(await downscaleImage(new File([blob], name, { type: blob.type })));
-    renderThumbArea();
-    toast("Demo photo added — press Analyze when ready.");
-  } catch(e){
-    toast("Could not load that demo photo. It may not be uploaded to the repository yet.", "warn");
-  }
-}
-function renderDemoStrip(){
-  const strip = $("#demoStrip");
-  const wrap = $("#demoWrap");
-  if (!strip) return;
-  if (!DEMO_IMAGES.length){ if (wrap) wrap.style.display = "none"; return; }
-  strip.innerHTML = DEMO_IMAGES.map((d, i) => `
-    <button class="demo-item" type="button" data-demo="${i}" title="Add this demo photo" aria-label="Add demo photo: ${esc(d.label)}">
-      <img src="${esc(d.src)}" alt="${esc(d.label)}" loading="lazy">
-      <span class="demo-lbl">${esc(d.label)}</span>
-      <span class="demo-add"><i data-lucide="plus"></i></span>
-    </button>`).join("");
-  let broken = 0;
-  $$("#demoStrip img").forEach(img => img.addEventListener("error", () => {
-    const item = img.closest(".demo-item");
-    if (item) item.style.display = "none";
-    if (++broken === DEMO_IMAGES.length && wrap) wrap.style.display = "none"; // none uploaded yet → hide the section
-  }));
-  $$("#demoStrip [data-demo]").forEach(b => b.addEventListener("click", () => addDemoImage(+b.dataset.demo)));
-  icons();
 }
 function renderThumbArea(){
   const area = $("#thumbArea");
@@ -962,30 +865,23 @@ function buildPrompt(){
     "Analyze ALL provided images together as one combined onion lot sample.",
     "",
     "TASKS:",
-    "1. Detect every visible onion bulb across ALL images. Report the combined total in total_onions_detected. Also report per_image_onion_counts: an array with one integer per image, in the order the images were provided, giving how many onion bulbs are visible in that image.",
+    "1. Detect every visible onion bulb across all images. Report the combined total in total_onions_detected.",
     "2. Classify each bulb: GRADE A means free of all four defect categories below and of reasonable size; URS means anything below that grade.",
     "3. Count defects per category: damaged (cuts, bruises, mechanical injury, cracks), rotten (dark rot, mold, watery or blackened areas), sprouted (visible green shoots or root growth from the apical/basal ends), undersized (clearly smaller than the typical bulb size in the lot).",
     "4. quality_score: integer 0-100 reflecting overall lot quality (100 = flawless).",
     "5. overall_verdict: PASS if grade_a percentage is at least 70 and rotten count is 0; REVIEW if grade_a percentage is at least 50 or the lot has minor issues worth a human look; FAIL otherwise. Use your judgment for borderline cases.",
-    "6. defect_highlights: one entry per defective bulb you can localize. box uses normalized coordinates as fractions (0-1) of that image's width and height. image_index is the 0-based index of the image (in the order provided) where the bulb appears — the FIRST image is 0, the second is 1, and so on. type is one of damaged, rotten, sprouted, undersized. confidence is 0-1. IMPORTANT: examine EVERY image in the batch and report highlights for EVERY image that contains defective bulbs, each with its own correct image_index — never merge the findings of all images onto image 0.",
+    "6. defect_highlights: one entry per defective bulb you can localize. box uses normalized coordinates as fractions (0-1) of that image's width and height. image_index is the 0-based index of the image (in the order provided) where the bulb appears. type is one of damaged, rotten, sprouted, undersized. confidence is 0-1.",
     "7. observations: 2-5 short, specific, factual sentences about sizing consistency, skin quality, sprouting, or anything a buyer should know.",
     "8. grading_rationale: 1-3 sentences explaining how you counted and graded.",
     "grade_percentages must be mathematically consistent with your counts.",
     "",
     "Respond with JSON only, exactly matching this schema (no extra keys, no markdown, no commentary):",
-    '{"total_onions_detected": 42, "per_image_onion_counts": [12, 18, 12], "defects": {"damaged": 5, "rotten": 2, "sprouted": 3, "undersized": 4}, "grade_percentages": {"grade_a": 66.7, "urs": 33.3}, "quality_score": 74, "overall_verdict": "PASS", "defect_highlights": [{"type": "rotten", "image_index": 0, "box": {"x": 0.12, "y": 0.34, "width": 0.21, "height": 0.18}, "confidence": 0.91, "note": "Dark rot visible at basal plate"}, {"type": "undersized", "image_index": 1, "box": {"x": 0.55, "y": 0.62, "width": 0.14, "height": 0.16}, "confidence": 0.8, "note": "Clearly smaller than the lot average"}], "observations": ["Consistent sizing across the sample with minor diameter variation."], "grading_rationale": "Grade A requires no visible rot, no sprouting, and minimum diameter; 28 of 42 bulbs qualify."}'
+    '{"total_onions_detected": 42, "defects": {"damaged": 5, "rotten": 2, "sprouted": 3, "undersized": 4}, "grade_percentages": {"grade_a": 66.7, "urs": 33.3}, "quality_score": 74, "overall_verdict": "PASS", "defect_highlights": [{"type": "rotten", "image_index": 0, "box": {"x": 0.12, "y": 0.34, "width": 0.21, "height": 0.18}, "confidence": 0.91, "note": "Dark rot visible at basal plate"}], "observations": ["Consistent sizing across the sample with minor diameter variation."], "grading_rationale": "Grade A requires no visible rot, no sprouting, and minimum diameter; 28 of 42 bulbs qualify."}'
   ].join("\n");
 }
 
-function effectiveApiKey(){
-  const personal = (state.settings.apiKey || "").trim();
-  if (personal) return personal;
-  const shared = (SHARED_DEMO_API_KEY || "").trim();
-  return /^PASTE/i.test(shared) ? "" : shared; // placeholder not replaced yet → treat as absent
-}
-
 async function callGemini(images){
-  const key = effectiveApiKey();
+  const key = (state.settings.apiKey || "").trim();
   const model = geminiModel();
   const url = `${GEMINI_ENDPOINT_BASE}/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
   const parts = [{ text: buildPrompt() }];
@@ -1033,11 +929,10 @@ async function callGemini(images){
     if (m){ try { parsed = JSON.parse(m[0]); } catch(e2){} }
     if (!parsed) throw { code: "bad-json", detail: "The AI did not return valid JSON. This is usually temporary — press Retry." };
   }
-  return sanitizeResult(parsed, images.length);
+  return sanitizeResult(parsed);
 }
 
-function sanitizeResult(r, numImages){
-  const nImg = Math.max(1, Math.round(Number(numImages) || 99)); // valid image_index: 0 … nImg-1
+function sanitizeResult(r){
   const num = (v, d) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const defects = r.defects || {};
   const out = {
@@ -1055,16 +950,13 @@ function sanitizeResult(r, numImages){
     quality_score: Math.min(100, Math.max(0, Math.round(num(r.quality_score, 0)))),
     overall_verdict: ["PASS","REVIEW","FAIL"].includes((r.overall_verdict || "").toUpperCase()) ? r.overall_verdict.toUpperCase() : "REVIEW",
     defect_highlights: [],
-    per_image_onion_counts: Array.isArray(r.per_image_onion_counts)
-      ? r.per_image_onion_counts.slice(0, nImg).map(n => Math.max(0, Math.round(num(n, 0))))
-      : null,
     observations: Array.isArray(r.observations) ? r.observations.filter(x => typeof x === "string").slice(0, 8) : [],
     grading_rationale: typeof r.grading_rationale === "string" ? r.grading_rationale : ""
   };
   if (Array.isArray(r.defect_highlights)){
     out.defect_highlights = r.defect_highlights.filter(h => h && h.box && ["damaged","rotten","sprouted","undersized"].includes(h.type)).map(h => ({
       type: h.type,
-      image_index: Math.min(nImg - 1, Math.max(0, Math.round(num(h.image_index, 0)))),
+      image_index: Math.max(0, Math.round(num(h.image_index, 0))),
       box: {
         x: Math.min(1, Math.max(0, num(h.box.x, 0))),
         y: Math.min(1, Math.max(0, num(h.box.y, 0))),
@@ -1111,7 +1003,7 @@ const ERROR_UI = {
 };
 
 async function analyze(){
-  if (!effectiveApiKey()){ toast("Add a Gemini API key in Settings first.", "warn"); route("settings"); return; }
+  if (!(state.settings.apiKey || "").trim()){ toast("Add your Gemini API key in Settings first.", "warn"); route("settings"); return; }
   if (!state.newImages.length){ toast("Add at least one photo of the onion lot.", "warn"); return; }
   const form = readForm();
   $("#errorArea").innerHTML = "";
@@ -1272,15 +1164,12 @@ function countItem(type, label, n){
 function galleryHtml(a){
   if (!a.images || !a.images.length) return `<div class="card" style="margin-top:14px"><p class="empty-note">Sample photos were removed from storage to save space — metrics below are preserved.</p></div>`;
   const hl = a.result.defect_highlights || [];
-  const per = Array.isArray(a.result.per_image_onion_counts) ? a.result.per_image_onion_counts : null;
   return `<div class="section-title"><i data-lucide="images"></i>Annotated samples</div>
   <div class="shots">` + a.images.map((im, i) => {
     const boxes = hl.filter(h => h.image_index === i);
-    const cnt = (per && per[i] != null) ? ` · ${per[i]} onion${per[i]===1?"":"s"}` : "";
-    const flg = boxes.length ? " · " + boxes.length + " flag" + (boxes.length===1?"":"s") : " · clean";
     return `<div class="shot">
       <img src="${im.dataUrl}" alt="Sample ${i+1}">
-      <span class="shot-tag">#${i+1}${cnt}${flg}</span>
+      <span class="shot-tag">#${i+1}${boxes.length ? " · " + boxes.length + " flag" + (boxes.length===1?"":"s") : ""}</span>
       ${boxes.map(h => bboxHtml(h)).join("")}
     </div>`;
   }).join("") + `</div>`;
@@ -1559,7 +1448,7 @@ function renderSettings(){
       <div class="key-row">
         <div class="field">
           <label for="sKey">API key</label>
-          <input id="sKey" type="password" placeholder="Optional — paste your own Google AI Studio key" autocomplete="off" value="${esc(s.apiKey)}">
+          <input id="sKey" type="password" placeholder="Paste your Google AI Studio key" autocomplete="off" value="${esc(s.apiKey)}">
         </div>
         <button class="btn btn-ghost" id="sKeyEye" style="align-self:flex-end;min-height:48px" aria-label="Show or hide key"><i data-lucide="eye"></i></button>
       </div>
@@ -1573,7 +1462,7 @@ function renderSettings(){
         <button class="btn btn-primary" id="sSave"><i data-lucide="save"></i>Save settings</button>
         <button class="btn btn-ghost" id="sTest"><i data-lucide="plug-zap"></i>Test key</button>
       </div>
-      <div class="set-note"><i data-lucide="shield-check"></i><span>This app ships with a built-in demo key, so it works out of the box for evaluation — no key needed. To use your own quota instead, paste a free key from aistudio.google.com/apikey. Keys are stored in this browser's localStorage only and never leave the device except in direct, encrypted calls to Google's Generative Language API.</span></div>
+      <div class="set-note"><i data-lucide="shield-check"></i><span>Your key is stored in this browser's localStorage only. It never leaves the device except in direct, encrypted calls to Google's Generative Language API. Get a free key at aistudio.google.com/apikey.</span></div>
     </div></div>
 
     <div class="set-section"><div class="card">
@@ -1625,11 +1514,9 @@ async function testKey(){
   const key = $("#sKey").value.trim();
   const st = $("#keyStatus");
   const show = (cls, icon, msg) => { st.className = "key-status show " + cls; st.innerHTML = `<i data-lucide="${icon}"></i>${esc(msg)}`; icons(); };
-  const sharedFallback = !key && effectiveApiKey();
-  if (sharedFallback) key = sharedFallback;
   if (!key){ show("bad", "alert-circle", "Enter an API key first."); return; }
-  if (!sharedFallback) state.settings.apiKey = key; // test with what is on screen
-  show("busy", "loader-2", sharedFallback ? "Pinging Google with the built-in demo key…" : "Pinging Google…");
+  state.settings.apiKey = key; // test with what is on screen
+  show("busy", "loader-2", "Pinging Google…");
   try {
     const res = await fetch(`${GEMINI_ENDPOINT_BASE}/${encodeURIComponent(geminiModel())}:generateContent?key=${encodeURIComponent(key)}`, {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -1716,15 +1603,6 @@ function init(){
   $("#btnBrowse").addEventListener("click", () => $("#fileInput").click());
   $("#fileInput").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
   $("#cameraInput").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
-  // Some mobile browsers fire `input` but never `change` after a multi-select
-  // from the system photo picker — handle both. Whichever fires first consumes
-  // the files and clears the input; the second event then finds an empty list
-  // and returns without duplicating anything.
-  ["fileInput", "cameraInput"].forEach(id => {
-    $("#" + id).addEventListener("input", e => {
-      if (e.target.files && e.target.files.length){ addFiles(e.target.files); e.target.value = ""; }
-    });
-  });
   const dz = $("#dropzone");
   ["dragenter","dragover"].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add("over"); }));
   ["dragleave","drop"].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove("over"); }));
@@ -1735,7 +1613,6 @@ function init(){
   // analyze
   $("#btnAnalyze").addEventListener("click", analyze);
 
-  renderDemoStrip();
   route("home");
   icons();
 }
